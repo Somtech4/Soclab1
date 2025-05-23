@@ -60,7 +60,8 @@ Simulate Brute-Force Attack from VM2:
 
 Run Hydra: hydra -L userlist.txt -P passlist.txt -t 4 ssh://10.0.2.15.
 
-Expected Outcome: Hydra retrieves testuser:password123 and allows remote login (ssh testuser@10.0.2.15).
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/bdddd14b-5e4d-437c-b1d9-a2fbfc101e25" />
+
 Mitigate with Fail2Ban on VM1:
 Install Fail2Ban: sudo apt install fail2ban -y && sudo systemctl start fail2ban && sudo systemctl enable fail2ban.
 Configure Fail2Ban (sudo nano /etc/fail2ban/jail.local):
@@ -77,49 +78,10 @@ findtime = 600
 Restart Fail2Ban: sudo systemctl restart fail2ban.
 Re-run the Hydra attack from VM2.
 
-Expected Outcome: After 3 failed attempts, VM2’s IP (10.0.2.6) is banned. Check logs: sudo tail -f /var/log/fail2ban.log.
-
-Capture Evidence:
-
-Screenshot SSH service status, Hydra output, Fail2Ban logs, and banned IP.
-
-Experiment 2: Wireshark Traffic Analysis
-
-Objective: Analyze a pcap file to identify a Man-on-the-Side attack involving malicious HTTP redirects.
-
-Steps
-
-Open Pcap File:
-
-
-On VM1 or VM2, launch Wireshark: wireshark &.
-
-Load turkey-malware-injection.pcap.
-Analyze Traffic:
-I/O Graph: Go to Statistics > I/O Graphs to observe packet rate spikes (indicating redirects).
-Endpoint Statistics: Go to Statistics > Endpoints to list IPs (e.g., client: 159.65.45.200, server: 85.105.114.98, malicious: 195.175.84.250).
-Packet List: Filter for HTTP (http) and inspect Frame 32 (GET request for vlc-2.2.0-8-win32.exe followed by a 307 Temporary Redirect).
-HTTP Stream: Right-click Frame 32, select Follow > HTTP Stream to view the redirect to a malicious URL (e.g., http://ad18af0bcab7c849bf236d427121d606f).
-Key Observations:
-The client is redirected from legitimate software downloads (e.g., VLC, Avast) to malicious EXEs via 307 redirects.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/4ae44193-0a3a-4843-95f0-53d5fa5170c5" />
 
 
 
-The quick redirect timing (0.15s) suggests a MotS attack.
-
-
-
-The malicious URL’s domain and hexadecimal query string indicate spyware (e.g., FinFisher).
-
-
-
-Capture Evidence:
-
-
-
-
-
-Screenshot I/O graph, endpoint statistics, packet list, and HTTP stream.
 
 Experiment 3: Firewall Configuration with iptables
 
@@ -133,18 +95,20 @@ Set default policies: sudo iptables -P FORWARD ACCEPT && sudo iptables -P OUTPUT
 
 Simulate SYN Scan from VM2:
 Run: nmap -sS 10.0.2.15.
-Expected Outcome: Nmap identifies open ports (e.g., 22/SSH).
+
 Block SYN Scan on VM1:
 Add rule:
 
 sudo iptables -A INPUT -p tcp --syn --dport 22 -m state --state NEW -m recent --rcheck --seconds 60 --hitcount 5 -j REJECT --reject-with tcp-reset
 Re-run Nmap scan from VM2.
-Expected Outcome: Scan fails after 5 SYN packets in 60 seconds. Check rule hit count: sudo iptables -L -v.
+
 
 
 Simulate Xmas Scan from VM2:
 Run: nmap -sX 10.0.2.15.
-Expected Outcome: Nmap detects ports as filtered.
+
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/177ca5d4-b9db-43e4-9e95-8e9231cec6c0" />
+
 
 Block Xmas Scan on VM1:
 
@@ -152,13 +116,10 @@ Add rule:
 
 sudo iptables -A INPUT -p tcp --tcp-flags ALL FIN,URG,PSH -j REJECT --reject-with tcp-reset
 Re-run Xmas scan from VM2.
-Expected Outcome: Scan fails. Capture Wireshark pcap showing TCP resets.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/01ca3316-0619-4228-b992-f7b4ae33d94b" />.
 
 
 
-Capture Evidence:
-
-Screenshot Nmap outputs, iptables rule counts, and Wireshark pcaps.
 
 
 Experiment 4: Intrusion Detection with Snort
@@ -175,19 +136,23 @@ Command: sudo snort -A console -c /etc/snort/snort.conf -i eth0 -l /var/log/snor
 
 Generate HTTPS traffic from VM2: Open https://www.bradford.ac.uk in a browser.
 Verify logs: sudo snort -r /var/log/snort/snort.log.* -b "tcp port 443".
-Expected Outcome: Logs show TCP handshake for port 443.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/9544afd8-e416-4f13-ba19-a443073b31fc" />
+
 
 
 
 Create ICMP Rule:
 Edit /etc/snort/rules/local.rules:
 alert icmp any any -> any any (msg:"ICMP Traffic Detected"; sid:10000001; classtype:network-scan;)
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/c2393a04-5ae9-430a-a559-df733531df7e" />
+
 Run Snort: sudo snort -A console -c /etc/snort/snort.conf -i eth0.
 Ping VM1 from VM2: ping 10.0.2.15.
 
 
 
-Expected Outcome: Snort alerts on ICMP traffic.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/6eec5a88-274d-4eae-97de-86b36ecacdc5" />
+
 
 
 Create SSH Rule:
@@ -195,15 +160,15 @@ Create SSH Rule:
 Add to /etc/snort/rules/local.rules:
 
 alert tcp any any -> any 22 (msg:"SSH Traffic Detected"; sid:10000002; classtype:attempted-admin;)
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/82c7f0c6-a5a2-40fe-95f0-d1f900223992" />
+
 
 Run Snort and attempt SSH login from VM2: ssh testuser@10.0.2.15.
 
-Expected Outcome: Snort alerts on SSH traffic.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/e1ca837f-6126-47b0-b0ea-1819ac05f64b" />
 
 
-Capture Evidence:
 
-Screenshot Snort alerts, log files, and rule configurations.
 
 
 Experiment 5: VPN Setup with OpenVPN
@@ -250,6 +215,8 @@ persist-tun
 
 
 Start server: sudo openvpn --config /etc/openvpn/server.conf &.
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/0bae119d-d1d0-4ce6-ba75-99caa39ac071" />
+
 Transfer Files to VM2:
 
 From VM1: sudo scp /etc/openvpn/ca.crt ~/easy-rsa/pki/issued/client1.crt ~/easy-rsa/pki/private/client1.key kali@10.0.2.6:/home/kali/.
@@ -278,34 +245,10 @@ On VM2, ping VM1’s VPN IP: ping 10.8.0.1.
 Check routing: route (should show tun0 interface).
 Capture traffic with Wireshark to confirm encrypted UDP 1194 traffic.
 Capture Evidence:
-
-Screenshot VPN connection, routing table, and Wireshark capture.
-
-Expected Outcomes
-
-
-
-
-
-SSH Attack: Hydra successfully retrieves credentials before mitigation; Fail2Ban blocks the attack after configuration.
-
-
-
-Wireshark: Pcap analysis reveals malicious 307 redirects and MotS attack patterns.
-
-
-
-Firewall: iptables rules block SYN and Xmas scans, confirmed by failed Nmap attempts.
-
-
-
-Snort: Alerts triggered for ICMP and SSH traffic, logged appropriately.
-
-
-
-VPN: Secure tunnel established, with encrypted traffic between VMs.
-
-
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/630f384c-f64f-403f-bdfb-5b886f362968" />
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/683e331d-733f-4a6b-8aff-3a67e0f25fae" />
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/85b417a7-fca2-4ea5-9837-2092cf0e22e3" />
+<img width="468" alt="image" src="https://github.com/user-attachments/assets/426d489f-21ff-4ab9-a755-0d15c56fff39" />
 
 
 
